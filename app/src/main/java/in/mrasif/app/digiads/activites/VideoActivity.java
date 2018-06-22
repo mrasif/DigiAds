@@ -3,6 +3,7 @@ package in.mrasif.app.digiads.activites;
 import android.app.ProgressDialog;
 import android.media.MediaPlayer;
 import android.net.Uri;
+import android.os.CountDownTimer;
 import android.os.Environment;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -34,31 +35,23 @@ public class VideoActivity extends AppCompatActivity implements DownloadHandler{
     ProgressDialog dialog;
     int videoID;
     int playId;
-    List<String> videoUrls;
     private VideoView vView;
+    File rootDir;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_video);
         dialog=new ProgressDialog(this);
-        videoUrls=new ArrayList<>();
         vView=findViewById(R.id.vView);
-        vView.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
-            @Override
-            public void onCompletion(MediaPlayer mp) {
-                mp.release();
-                mp=null;
-                Toast.makeText(VideoActivity.this, "Completed : "+playId, Toast.LENGTH_SHORT).show();
-                play();
-            }
-        });
-        vView.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
-            @Override
-            public void onPrepared(MediaPlayer mp) {
 
-            }
-        });
+        rootDir=new File(Environment.getExternalStorageDirectory()+"/DigiAds");
+        if (!rootDir.exists()){
+            try{
+                rootDir.mkdir();
+            }catch (Exception e){}
+        }
+
         loadDatas();
 
     }
@@ -93,45 +86,74 @@ public class VideoActivity extends AppCompatActivity implements DownloadHandler{
     private void makeCache() {
 
         if (videoID<videos.size()){
-            VideoModel videoModels=videos.get(videoID++);
-            downloadNow(videoModels.getRender_details().getPath());
-        }
-    }
-
-    private void play(){
-        Toast.makeText(this, ""+videoUrls.size(), Toast.LENGTH_SHORT).show();
-        if (playId<videoUrls.size()) {
-            String url=videoUrls.get(playId++);
-            System.out.println(url);
-            Uri vidUri = Uri.parse(url);
-            vView.stopPlayback();
-            vView.setVideoURI(vidUri);
-            vView.start();
-            Toast.makeText(VideoActivity.this, "Prepared called", Toast.LENGTH_SHORT).show();
-            // Clear the background resource when the video is prepared to play.
-            vView.setBackgroundResource(0);
-        }
-        if (playId>=videoUrls.size()){
-            playId=0;
-        }
-    }
-
-    private void downloadNow(String url){
-        File file=new File(Environment.getExternalStorageDirectory()+"/myapp");
-        if (!file.exists()){
-            try{
-                file.mkdir();
-            }catch (Exception e){}
-        }
-        File filePath=new File(file+ "/"+AllMethods.getFileNameFromUrl(url));
-        if (filePath.exists()) {
-            videoUrls.add(filePath.toString());
-            play();
+            VideoModel videoModels=videos.get(videoID);
+            File filePath=new File(rootDir+ "/"+AllMethods.getFileNameFromUrl(videoModels.getRender_details().getPath()));
+            if (filePath.exists()) {
+                videoModels.setFile(filePath.toString());
+                videoID++;
+                makeCache();
+            }
+            else {
+                new Downloader(this, videoModels.getRender_details().getPath(), filePath).execute();
+            }
         }
         else {
-            new Downloader(this, url, filePath).execute();
+            Toast.makeText(this, (videoID)+" files downloaded.", Toast.LENGTH_SHORT).show();
+            System.out.println("###################################");
+            System.out.println(videos);
+            System.out.println("###################################");
+            // TODO Play Videos
+            playId=0;
+            playVideos();
         }
     }
+
+    private void playVideos() {
+        if (playId<videos.size()) {
+            VideoModel videoModel = videos.get(playId);
+            playVideo(videoModel.getFile(), videoModel.getDuration());
+        }
+        else {
+            playId=0;
+            playVideos();
+        }
+    }
+
+    private void playVideo(String file_path, final long seconds) {
+        Toast.makeText(this, "Playing video id: "+playId, Toast.LENGTH_SHORT).show();
+        play(file_path);
+        new CountDownTimer(seconds*1000, 1000) {
+            int time=(int)seconds;
+
+            /*public String checkDigit(int number) {
+                return number <= 9 ? "0" + number : String.valueOf(number);
+            }*/
+
+            /*public String formatAsClock(int number){
+                int m=number/60;
+                int s=number%60;
+                return checkDigit(m)+":"+checkDigit(s);
+            }*/
+
+            public void onTick(long millisUntilFinished) {
+//                tvTimer.setText(formatAsClock(time));
+                time--;
+
+            }
+
+            public void onFinish() {
+                playId++;
+                playVideos();
+            }
+
+        }.start();
+    }
+
+    private void play(String file_path){
+        vView.setVideoPath(file_path);
+        vView.start();
+    }
+
 
     @Override
     public void downloadProgressShow() {
@@ -155,11 +177,15 @@ public class VideoActivity extends AppCompatActivity implements DownloadHandler{
         dialog.dismiss();
         Toast.makeText(this, "Downloaded: "+file.getName(), Toast.LENGTH_SHORT).show();
 //        play(file.toString(),file.getName());
-        videoUrls.add(file.toString());
+        /*videoUrls.add(file.toString());
         play();
         if (videoID<videos.size()){
             VideoModel videoModels=videos.get(videoID++);
             downloadNow(videoModels.getRender_details().getPath());
-        }
+        }*/
+        VideoModel videoModels=videos.get(videoID);
+        videoModels.setFile(file.toString());
+        videoID++;
+        makeCache();
     }
 }

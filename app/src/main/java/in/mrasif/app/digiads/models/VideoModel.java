@@ -6,17 +6,19 @@ public class VideoModel {
     private long duration;
     private String type;
     private RenderDetails render_details;
+    private String file;
 
     public VideoModel() {
         this.render_details=new RenderDetails();
     }
 
-    public VideoModel(int id, String name, long duration, String type, RenderDetails render_details) {
+    public VideoModel(int id, String name, long duration, String type, RenderDetails render_details, String file) {
         this.id = id;
         this.name = name;
         this.duration = duration;
         this.type = type;
         this.render_details = render_details;
+        this.file = file;
     }
 
     public int getId() {
@@ -59,6 +61,14 @@ public class VideoModel {
         this.render_details = render_details;
     }
 
+    public String getFile() {
+        return file;
+    }
+
+    public void setFile(String file) {
+        this.file = file;
+    }
+
     @Override
     public String toString() {
         return "VideoModel{" +
@@ -67,6 +77,7 @@ public class VideoModel {
                 ", duration=" + duration +
                 ", type='" + type + '\'' +
                 ", render_details=" + render_details +
+                ", file='" + file + '\'' +
                 '}';
     }
 
