@@ -21,6 +21,6 @@ public interface ApisInterface {
     Call<SetupData> getSetupData(@Path("id") int id);
 
     @GET(AllUrls.VIDEOS)
-    Call<List<VideoModel>> getVideos();
+    Call<List<VideoModel>> getVideos(@Path("id") int id);
 
 }

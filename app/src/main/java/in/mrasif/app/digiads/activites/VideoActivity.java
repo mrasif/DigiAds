@@ -1,13 +1,18 @@
 package in.mrasif.app.digiads.activites;
 
 import android.app.ProgressDialog;
+import android.content.Intent;
 import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.CountDownTimer;
 import android.os.Environment;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.app.WindowDecorActionBar;
+import android.text.TextUtils;
 import android.util.Log;
+import android.view.Window;
+import android.view.WindowManager;
 import android.widget.Toast;
 import android.widget.VideoView;
 
@@ -41,6 +46,9 @@ public class VideoActivity extends AppCompatActivity implements DownloadHandler{
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        requestWindowFeature(Window.FEATURE_NO_TITLE);
+        supportRequestWindowFeature(Window.FEATURE_NO_TITLE);
+        getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
         setContentView(R.layout.activity_video);
         dialog=new ProgressDialog(this);
         vView=findViewById(R.id.vView);
@@ -51,17 +59,19 @@ public class VideoActivity extends AppCompatActivity implements DownloadHandler{
                 rootDir.mkdir();
             }catch (Exception e){}
         }
+        Intent intent=getIntent();
+        int screen_id=intent.getIntExtra("screen_id",0);
 
-        loadDatas();
+        loadDatas(screen_id);
 
     }
 
-    private void loadDatas() {
+    private void loadDatas(int screen_id) {
         final ProgressDialog dialog=new ProgressDialog(this);
         dialog.setMessage("Loading...");
         dialog.setCancelable(false);
         dialog.show();
-        ApiDao.getApis().getVideos().enqueue(new Callback<List<VideoModel>>() {
+        ApiDao.getApis().getVideos(screen_id).enqueue(new Callback<List<VideoModel>>() {
             @Override
             public void onResponse(Call<List<VideoModel>> call, Response<List<VideoModel>> response) {
                 videos=response.body();
@@ -98,8 +108,8 @@ public class VideoActivity extends AppCompatActivity implements DownloadHandler{
             }
         }
         else {
-            Toast.makeText(this, (videoID)+" files downloaded.", Toast.LENGTH_SHORT).show();
             System.out.println("###################################");
+            System.out.println((videoID)+" files downloaded.");
             System.out.println(videos);
             System.out.println("###################################");
             // TODO Play Videos
@@ -120,10 +130,17 @@ public class VideoActivity extends AppCompatActivity implements DownloadHandler{
     }
 
     private void playVideo(String file_path, final long seconds) {
-        Toast.makeText(this, "Playing video id: "+playId, Toast.LENGTH_SHORT).show();
-        play(file_path);
-        new CountDownTimer(seconds*1000, 1000) {
-            int time=(int)seconds;
+        System.out.println("########################################");
+        System.out.println("Playing video id: "+playId);
+        System.out.println("########################################");
+        if(TextUtils.isEmpty(file_path)){
+            playId++;
+            playVideos();
+        }
+        else {
+            play(file_path);
+            new CountDownTimer(seconds * 1000, 1000) {
+                int time = (int) seconds;
 
             /*public String checkDigit(int number) {
                 return number <= 9 ? "0" + number : String.valueOf(number);
@@ -135,21 +152,23 @@ public class VideoActivity extends AppCompatActivity implements DownloadHandler{
                 return checkDigit(m)+":"+checkDigit(s);
             }*/
 
-            public void onTick(long millisUntilFinished) {
+                public void onTick(long millisUntilFinished) {
 //                tvTimer.setText(formatAsClock(time));
-                time--;
+                    time--;
 
-            }
+                }
 
-            public void onFinish() {
-                playId++;
-                playVideos();
-            }
+                public void onFinish() {
+                    playId++;
+                    playVideos();
+                }
 
-        }.start();
+            }.start();
+        }
     }
 
     private void play(String file_path){
+
         vView.setVideoPath(file_path);
         vView.start();
     }
@@ -169,13 +188,16 @@ public class VideoActivity extends AppCompatActivity implements DownloadHandler{
     @Override
     public void downloadProgressUpdate(int progress) {
         dialog.setProgress(progress);
-        Log.d(TAG, "downloadProgressUpdate: "+progress);
+//        Log.d(TAG, "downloadProgressUpdate: "+progress);
     }
 
     @Override
     public void downloadProgressDismiss(File file) {
         dialog.dismiss();
-        Toast.makeText(this, "Downloaded: "+file.getName(), Toast.LENGTH_SHORT).show();
+        System.out.println("###########################################");
+        System.out.println("Downloaded: "+file.getName());
+        System.out.println("###########################################");
+
 //        play(file.toString(),file.getName());
         /*videoUrls.add(file.toString());
         play();

@@ -76,7 +76,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         Manifest.permission.MEDIA_CONTENT_CONTROL},2);
                 boolean asked=askPermission.isPermissionAllowed(Manifest.permission.WRITE_EXTERNAL_STORAGE);
                 if (asked){
-                    startActivity(new Intent(MainActivity.this,VideoActivity.class));
+                    int screen_id=Integer.parseInt(etId.getText().toString());
+                    if (screen_id>0) {
+                        Intent intent = new Intent(MainActivity.this, VideoActivity.class);
+                        intent.putExtra("screen_id", screen_id);
+                        startActivity(intent);
+                    }
+                    else {
+                        Toast.makeText(this, "Please type screen id.", Toast.LENGTH_SHORT).show();
+                    }
                 }
                 else {
                     Toast.makeText(this, "Please give permission !", Toast.LENGTH_SHORT).show();
