@@ -2,26 +2,24 @@ package in.mrasif.app.digiads.activites;
 
 import android.app.ProgressDialog;
 import android.content.Intent;
+import android.media.AudioManager;
 import android.media.MediaPlayer;
-import android.net.Uri;
+import android.media.SyncParams;
 import android.os.CountDownTimer;
 import android.os.Environment;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.support.v7.app.WindowDecorActionBar;
 import android.text.TextUtils;
 import android.util.Log;
+import android.view.Display;
+import android.view.SurfaceHolder;
+import android.view.SurfaceView;
 import android.view.Window;
 import android.view.WindowManager;
-import android.widget.Toast;
-import android.widget.VideoView;
-
 import com.google.gson.Gson;
-
 import java.io.File;
-import java.util.ArrayList;
+import java.io.IOException;
 import java.util.List;
-
 import in.mrasif.app.digiads.R;
 import in.mrasif.app.digiads.apis.ApiDao;
 import in.mrasif.app.digiads.models.VideoModel;
@@ -32,16 +30,21 @@ import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
-public class VideoActivity extends AppCompatActivity implements DownloadHandler{
+public class VideoActivity extends AppCompatActivity implements DownloadHandler, SurfaceHolder.Callback {
 
     private static final String TAG = "VideoActivity";
 
+    File rootDir;
     List<VideoModel> videos;
     ProgressDialog dialog;
     int videoID;
     int playId;
-    private VideoView vView;
-    File rootDir;
+
+    Display currentDisplay;
+    SurfaceView svVideo;
+    SurfaceHolder surfaceHolder;
+    MediaPlayer player;
+    int screen_id;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -49,21 +52,51 @@ public class VideoActivity extends AppCompatActivity implements DownloadHandler{
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         supportRequestWindowFeature(Window.FEATURE_NO_TITLE);
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
+
+        currentDisplay = getWindowManager().getDefaultDisplay();
+
         setContentView(R.layout.activity_video);
         dialog=new ProgressDialog(this);
-        vView=findViewById(R.id.vView);
+        configCacheDir();
+        Intent intent=getIntent();
+        screen_id=intent.getIntExtra("screen_id",0);
 
+        svVideo=findViewById(R.id.svVideo);
+
+        surfaceHolder = svVideo.getHolder();
+        surfaceHolder.addCallback(this);
+        surfaceHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
+
+        player = new MediaPlayer();
+
+
+
+        loadDatas(screen_id);
+
+    }
+
+    private void configCacheDir() {
         rootDir=new File(Environment.getExternalStorageDirectory()+"/DigiAds");
         if (!rootDir.exists()){
             try{
                 rootDir.mkdir();
             }catch (Exception e){}
         }
-        Intent intent=getIntent();
-        int screen_id=intent.getIntExtra("screen_id",0);
+    }
 
-        loadDatas(screen_id);
+    public void triggerDownload(){
+        Log.d(TAG, "trigerDownload: Download triggered.");
+        final int seconds=60;
+        new CountDownTimer(seconds * 1000, 1000) {
+            int time = (int) seconds;
+            public void onTick(long millisUntilFinished) {
+                time--;
+            }
 
+            public void onFinish() {
+                loadDatas(screen_id);
+            }
+        }.start();
     }
 
     private void loadDatas(int screen_id) {
@@ -79,8 +112,8 @@ public class VideoActivity extends AppCompatActivity implements DownloadHandler{
                 System.out.println(new Gson().toJson(videos));
                 System.out.println("###########################################");
                 videoID=0;
-                dialog.dismiss();
 
+                dialog.dismiss();
                 makeCache();
 
             }
@@ -112,7 +145,7 @@ public class VideoActivity extends AppCompatActivity implements DownloadHandler{
             System.out.println((videoID)+" files downloaded.");
             System.out.println(videos);
             System.out.println("###################################");
-            // TODO Play Videos
+
             playId=0;
             playVideos();
         }
@@ -120,6 +153,7 @@ public class VideoActivity extends AppCompatActivity implements DownloadHandler{
 
     private void playVideos() {
         if (playId<videos.size()) {
+
             VideoModel videoModel = videos.get(playId);
             playVideo(videoModel.getFile(), videoModel.getDuration());
         }
@@ -141,38 +175,35 @@ public class VideoActivity extends AppCompatActivity implements DownloadHandler{
             play(file_path);
             new CountDownTimer(seconds * 1000, 1000) {
                 int time = (int) seconds;
-
-            /*public String checkDigit(int number) {
-                return number <= 9 ? "0" + number : String.valueOf(number);
-            }*/
-
-            /*public String formatAsClock(int number){
-                int m=number/60;
-                int s=number%60;
-                return checkDigit(m)+":"+checkDigit(s);
-            }*/
-
                 public void onTick(long millisUntilFinished) {
-//                tvTimer.setText(formatAsClock(time));
                     time--;
-
                 }
 
                 public void onFinish() {
                     playId++;
                     playVideos();
                 }
-
             }.start();
         }
     }
 
     private void play(String file_path){
-
-        vView.setVideoPath(file_path);
-        vView.start();
+        try {
+            try {
+                player.reset();
+            }catch (Exception e){
+            }
+            player.setDataSource(file_path);
+            player.setDisplay(surfaceHolder);
+            player.prepare();
+            player.setAudioStreamType(AudioManager.STREAM_MUSIC);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        player.start();
+//        vView.setVideoPath(file_path);
+//        vView.start();
     }
-
 
     @Override
     public void downloadProgressShow() {
@@ -188,7 +219,6 @@ public class VideoActivity extends AppCompatActivity implements DownloadHandler{
     @Override
     public void downloadProgressUpdate(int progress) {
         dialog.setProgress(progress);
-//        Log.d(TAG, "downloadProgressUpdate: "+progress);
     }
 
     @Override
@@ -197,17 +227,32 @@ public class VideoActivity extends AppCompatActivity implements DownloadHandler{
         System.out.println("###########################################");
         System.out.println("Downloaded: "+file.getName());
         System.out.println("###########################################");
-
-//        play(file.toString(),file.getName());
-        /*videoUrls.add(file.toString());
-        play();
-        if (videoID<videos.size()){
-            VideoModel videoModels=videos.get(videoID++);
-            downloadNow(videoModels.getRender_details().getPath());
-        }*/
         VideoModel videoModels=videos.get(videoID);
         videoModels.setFile(file.toString());
         videoID++;
         makeCache();
+        triggerDownload();
     }
+
+    @Override
+    public void surfaceCreated(SurfaceHolder holder) {
+
+        /*mediaPlayer.setDisplay(holder);
+        try {
+            mediaPlayer.prepare();
+        } catch (Exception e) {
+            finish();
+        }*/
+    }
+
+    @Override
+    public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
+
+    }
+
+    @Override
+    public void surfaceDestroyed(SurfaceHolder holder) {
+
+    }
+
 }
