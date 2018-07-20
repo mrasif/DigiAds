@@ -56,6 +56,14 @@ public class VideoActivity extends AppCompatActivity implements DownloadHandler,
         currentDisplay = getWindowManager().getDefaultDisplay();
 
         setContentView(R.layout.activity_video);
+
+
+
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
         dialog=new ProgressDialog(this);
         configCacheDir();
         Intent intent=getIntent();
@@ -70,9 +78,7 @@ public class VideoActivity extends AppCompatActivity implements DownloadHandler,
         player = new MediaPlayer();
 
 
-
         loadDatas(screen_id);
-
     }
 
     private void configCacheDir() {
@@ -86,7 +92,7 @@ public class VideoActivity extends AppCompatActivity implements DownloadHandler,
 
     public void triggerDownload(){
         Log.d(TAG, "trigerDownload: Download triggered.");
-        final int seconds=60;
+        final int seconds=900;
         new CountDownTimer(seconds * 1000, 1000) {
             int time = (int) seconds;
             public void onTick(long millisUntilFinished) {
@@ -100,10 +106,11 @@ public class VideoActivity extends AppCompatActivity implements DownloadHandler,
     }
 
     private void loadDatas(int screen_id) {
+        triggerDownload();
         final ProgressDialog dialog=new ProgressDialog(this);
         dialog.setMessage("Loading...");
         dialog.setCancelable(false);
-        dialog.show();
+//        dialog.show();
         ApiDao.getApis().getVideos(screen_id).enqueue(new Callback<List<VideoModel>>() {
             @Override
             public void onResponse(Call<List<VideoModel>> call, Response<List<VideoModel>> response) {
@@ -113,7 +120,7 @@ public class VideoActivity extends AppCompatActivity implements DownloadHandler,
                 System.out.println("###########################################");
                 videoID=0;
 
-                dialog.dismiss();
+//                dialog.dismiss();
                 makeCache();
 
             }
@@ -121,7 +128,7 @@ public class VideoActivity extends AppCompatActivity implements DownloadHandler,
             @Override
             public void onFailure(Call<List<VideoModel>> call, Throwable t) {
                 Log.e(TAG, "onFailure: ", t);
-                dialog.dismiss();
+//                dialog.dismiss();
             }
         });
     }
@@ -213,25 +220,25 @@ public class VideoActivity extends AppCompatActivity implements DownloadHandler,
         dialog.setIndeterminate(false);
         dialog.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
         dialog.setCancelable(false);
-        dialog.show();
+//        dialog.show();
     }
 
     @Override
     public void downloadProgressUpdate(int progress) {
-        dialog.setProgress(progress);
+//        dialog.setProgress(progress);
     }
 
     @Override
     public void downloadProgressDismiss(File file) {
-        dialog.dismiss();
+//        dialog.dismiss();
         System.out.println("###########################################");
         System.out.println("Downloaded: "+file.getName());
         System.out.println("###########################################");
+//        triggerDownload();
         VideoModel videoModels=videos.get(videoID);
         videoModels.setFile(file.toString());
         videoID++;
         makeCache();
-        triggerDownload();
     }
 
     @Override
